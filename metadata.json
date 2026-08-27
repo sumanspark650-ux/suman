@@ -1,0 +1,6 @@
+{
+  "name": "ExamSeat Allotment System",
+  "description": "Automated examination seating allotment generator with anti-cheating interleaved branch distribution, room visualizers, and printable attendance charts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
