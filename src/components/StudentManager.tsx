@@ -237,6 +237,16 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
               <span>Add Candidate</span>
             </button>
 
+            <button
+              onClick={handleDownloadTemplate}
+              id="btn-download-csv-template"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+              title="Download CSV template"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>CSV Template</span>
+            </button>
+
             {students.length > 0 && (
               <button
                 onClick={handleClearAll}

@@ -16,7 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'students' | 'rooms' | 'allotment' | 'lookup'>('allotment');
 
   // Core Data States
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<Student[]>(() => generateSampleStudents());
   const [rooms, setRooms] = useState<Room[]>(() => SAMPLE_ROOMS);
 
   // Settings State
@@ -39,7 +39,7 @@ export default function App() {
 
   // Initial Seating Result
   const [allotmentResult, setAllotmentResult] = useState<AllotmentResult>(() => {
-    return generateSeatingAllotment([], SAMPLE_ROOMS, {
+    return generateSeatingAllotment(generateSampleStudents(), SAMPLE_ROOMS, {
       strategy: 'interleaved_departments',
       disallowSameDeptAdjacentHorizontal: true,
       disallowSameDeptAdjacentVertical: true,
