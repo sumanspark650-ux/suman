@@ -1,10 +1,11 @@
 import React from 'react';
 import { Users, Building2, Grid3X3, Search, Code2, Sparkles, Download, Calendar, Clock } from 'lucide-react';
 import { AllotmentSettings, Room, Student } from '../types';
+import { SmartStudentLogo } from './SmartStudentLogo';
 
 interface HeaderProps {
-  activeTab: 'students' | 'rooms' | 'allotment' | 'lookup' | 'python';
-  setActiveTab: (tab: 'students' | 'rooms' | 'allotment' | 'lookup' | 'python') => void;
+  activeTab: 'students' | 'rooms' | 'allotment' | 'lookup';
+  setActiveTab: (tab: 'students' | 'rooms' | 'allotment' | 'lookup') => void;
   studentsCount: number;
   roomsCount: number;
   totalRoomCapacity: number;
@@ -12,12 +13,11 @@ interface HeaderProps {
   settings: AllotmentSettings;
   setSettings: React.Dispatch<React.SetStateAction<AllotmentSettings>>;
   onOpenExportModal: () => void;
-  onOpenPythonModal: () => void;
   onLoadSampleData: () => void;
 }
 
 interface TabItem {
-  id: 'students' | 'rooms' | 'allotment' | 'lookup' | 'python';
+  id: 'students' | 'rooms' | 'allotment' | 'lookup';
   label: string;
   icon: React.ElementType;
   count?: number;
@@ -34,15 +34,13 @@ export const Header: React.FC<HeaderProps> = ({
   settings,
   setSettings,
   onOpenExportModal,
-  onOpenPythonModal,
   onLoadSampleData
 }) => {
   const tabs: TabItem[] = [
     { id: 'students', label: '1. Students Database', icon: Users, count: studentsCount },
     { id: 'rooms', label: '2. Exam Rooms', icon: Building2, count: roomsCount },
     { id: 'allotment', label: '3. Seating Engine & Map', icon: Grid3X3, badge: allocatedCount > 0 ? `${allocatedCount} Seated` : undefined },
-    { id: 'lookup', label: '4. Student Search & Slips', icon: Search },
-    { id: 'python', label: 'Python Script', icon: Code2 }
+    { id: 'lookup', label: '4. Student Search & Slips', icon: Search }
   ];
 
   return (
@@ -50,9 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Top Banner with Exam Title & Quick Details */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm font-bold text-lg tracking-wider">
-            ES
-          </div>
+          <SmartStudentLogo className="w-11 h-11" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -90,15 +86,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Export & Print</span>
             </button>
           )}
-
-          <button
-            onClick={onOpenPythonModal}
-            id="btn-view-python-code"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors cursor-pointer"
-          >
-            <Code2 className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Python Engine</span>
-          </button>
         </div>
       </div>
 

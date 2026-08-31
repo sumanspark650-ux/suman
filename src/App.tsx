@@ -7,14 +7,13 @@ import { RoomVisualizer } from './components/RoomVisualizer';
 import { AnalyticsPanel } from './components/AnalyticsPanel';
 import { StudentLookup } from './components/StudentLookup';
 import { PrintExportModal } from './components/PrintExportModal';
-import { PythonScriptModal } from './components/PythonScriptModal';
 import { AllotmentResult, AllotmentSettings, Room, Student } from './types';
 import { generateSampleStudents, SAMPLE_ROOMS } from './utils/sampleData';
 import { calculateRoomCapacity, generateSeatingAllotment } from './utils/seatingAlgorithm';
-import { Sparkles, CheckCircle2, ArrowRight, ShieldCheck, Download, Code2, Users, Building2, Grid3X3, Search } from 'lucide-react';
+import { Sparkles, Grid3X3 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'students' | 'rooms' | 'allotment' | 'lookup' | 'python'>('allotment');
+  const [activeTab, setActiveTab] = useState<'students' | 'rooms' | 'allotment' | 'lookup'>('allotment');
 
   // Core Data States
   const [students, setStudents] = useState<Student[]>(() => generateSampleStudents());
@@ -37,7 +36,6 @@ export default function App() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isPythonModalOpen, setIsPythonModalOpen] = useState(false);
 
   // Initial Seating Result
   const [allotmentResult, setAllotmentResult] = useState<AllotmentResult>(() => {
@@ -119,7 +117,6 @@ export default function App() {
         settings={settings}
         setSettings={setSettings}
         onOpenExportModal={() => setIsExportModalOpen(true)}
-        onOpenPythonModal={() => setIsPythonModalOpen(true)}
         onLoadSampleData={handleLoadSampleData}
       />
 
@@ -201,86 +198,6 @@ export default function App() {
             rooms={rooms}
           />
         )}
-
-        {/* TAB 5: Standalone Python Script Engine */}
-        {activeTab === 'python' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Code2 className="w-5 h-5 text-emerald-600" />
-                    Python Seating Allotment Engine
-                  </h2>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                    Run the exact same anti-cheating exam sitting allocation algorithm on local CSV files using Python 3 & Pandas.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setIsPythonModalOpen(true)}
-                  id="btn-open-python-modal-tab"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download .py Script</span>
-                </button>
-              </div>
-
-              {/* Instructions on running Python code */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center mb-2">
-                    1
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 mb-1">Export Students CSV</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Download your candidate roster in CSV format from Tab 1 or prepare a spreadsheet with Roll No, Name, and Branch columns.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center mb-2">
-                    2
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 mb-1">Run Python Script</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed font-mono text-[11px] bg-white p-1.5 rounded border border-slate-200 mt-1">
-                    python3 exam_seating_allotment.py
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center mb-2">
-                    3
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-bold text-slate-900 mb-1">Get Notice Boards & CSV</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    The script outputs formatted console summaries and saves <code className="text-emerald-700 font-bold">seating_arrangement_output.csv</code> ready for distribution.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Embedded Python Inspector */}
-            <div className="bg-slate-950 rounded-2xl border border-slate-800 p-5 shadow-xl text-slate-200">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 text-xs">
-                <span className="font-mono text-emerald-400 font-bold">exam_seating_allotment.py</span>
-                <span className="text-slate-500">Standalone Python 3 Script</span>
-              </div>
-              <pre className="text-[11px] font-mono text-slate-300 overflow-x-auto max-h-96 p-2 leading-relaxed">
-                {`# Exam Seating Allotment Engine - Python 3
-# Multi-Department Interleaving & Anti-Cheating Seat Generator
-import csv, json, sys
-from collections import defaultdict
-
-# 1. Load candidates from CSV
-# 2. Configure hall grid dimensions (rows x cols x seats_per_bench)
-# 3. Interleave branches across columns and desks
-# 4. Export final master seating chart to CSV / Excel`}
-              </pre>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* Export / Print Hub Modal */}
@@ -288,15 +205,6 @@ from collections import defaultdict
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         result={allotmentResult}
-      />
-
-      {/* Standalone Python Script Modal */}
-      <PythonScriptModal
-        isOpen={isPythonModalOpen}
-        onClose={() => setIsPythonModalOpen(false)}
-        students={students}
-        rooms={rooms}
-        settings={settings}
       />
     </div>
   );
