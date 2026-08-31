@@ -66,16 +66,6 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Exam Schedule Bar & Quick Actions */}
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-          <button
-            onClick={onLoadSampleData}
-            id="btn-sample-data"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-lg transition-colors cursor-pointer"
-            title="Load ready-made 100 students across 4 branches & 3 exam halls"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>Load Demo Data</span>
-          </button>
-
           {allocatedCount > 0 && (
             <button
               onClick={onOpenExportModal}

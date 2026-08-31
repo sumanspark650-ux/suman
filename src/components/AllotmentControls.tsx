@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, Shuffle, Sliders, RefreshCw, Cpu, Layers, GitFork } from 'lucide-react';
+import { Sparkles, ShieldCheck, RefreshCw, Cpu, Layers } from 'lucide-react';
 import { AllotmentSettings, AllotmentStrategy } from '../types';
 
 interface AllotmentControlsProps {
@@ -29,22 +29,10 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
       icon: ShieldCheck
     },
     {
-      id: 'snake_zigzag',
-      title: 'Snake / Zigzag Traversal',
-      desc: 'Traverses benches in alternating serpentine order while isolating branch neighbors.',
-      icon: GitFork
-    },
-    {
       id: 'cross_subject_bench',
       title: 'Cross-Subject Desk Pairing',
       desc: 'Guarantees that bench partners on 2-seater desks are from completely different exam papers.',
       icon: Layers
-    },
-    {
-      id: 'randomized_fair',
-      title: 'Randomized Anti-Cheat Order',
-      desc: 'Randomizes roll sequence while strictly keeping department spacing boundaries.',
-      icon: Shuffle
     }
   ];
 
@@ -88,7 +76,7 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
       </div>
 
       {/* Strategy Grid Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {strategies.map(s => {
           const isSelected = settings.strategy === s.id;
           const Icon = s.icon;

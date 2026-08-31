@@ -78,8 +78,12 @@ export function generateSeatingAllotment(
     return room.blockedSeats.some(b => b.row === r && b.col === c && b.seatIndex === s);
   };
 
-  // Helper to get department/subject queues copy
-  const queues = Object.keys(studentsByDept).map(dept => ({
+  // Helper to get department/subject queues copy, sorted in natural order (e.g. I-B.sc, II-B.sc, III-B.sc)
+  const sortedDeptNames = Object.keys(studentsByDept).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+  );
+
+  const queues = sortedDeptNames.map(dept => ({
     department: dept,
     students: [...studentsByDept[dept]]
   }));
@@ -176,11 +180,34 @@ export function generateSeatingAllotment(
       const neighborDepts = new Set(neighborStudents.map(n => n.department));
       const neighborSubjects = new Set(neighborStudents.map(n => n.subjectCode));
 
-      // Sort queues to prioritize queues with most remaining students,
-      // but penalize queues matching adjacent neighbor departments/subjects
-      const sortedQueues = [...queues]
-        .filter(q => q.students.length > 0)
-        .sort((a, b) => {
+      // Sort queues based on chosen strategy
+      let sortedQueues = [...queues].filter(q => q.students.length > 0);
+
+      if (settings.strategy === 'sequential_roll' && queues.length > 1) {
+        // Cyclic shift:
+        // Desk 1: (Seat A: Dept 0, Seat B: Dept 1, Seat C: Dept 2) -> I-B.sc, II-B.sc, III-B.sc
+        // Desk 2: (Seat A: Dept 1, Seat B: Dept 2, Seat C: Dept 0) -> II-B.sc, III-B.sc, I-B.sc
+        // Desk 3: (Seat A: Dept 2, Seat B: Dept 0, Seat C: Dept 1) -> III-B.sc, I-B.sc, II-B.sc
+        const deskOffset = Math.max(0, pos.benchNumber - 1);
+        const targetQueueIdx = (pos.seatIndex + deskOffset) % queues.length;
+        const preferredDept = queues[targetQueueIdx]?.department;
+
+        sortedQueues.sort((a, b) => {
+          const aDeptClash = neighborDepts.has(a.department) ? 1000 : 0;
+          const bDeptClash = neighborDepts.has(b.department) ? 1000 : 0;
+
+          const aPref = a.department === preferredDept ? -2000 : 0;
+          const bPref = b.department === preferredDept ? -2000 : 0;
+
+          const aScore = aDeptClash + aPref;
+          const bScore = bDeptClash + bPref;
+
+          return aScore - bScore;
+        });
+      } else {
+        // Sort queues to prioritize queues with most remaining students,
+        // but penalize queues matching adjacent neighbor departments/subjects
+        sortedQueues.sort((a, b) => {
           const aDeptClash = neighborDepts.has(a.department) ? 1000 : 0;
           const bDeptClash = neighborDepts.has(b.department) ? 1000 : 0;
 
@@ -194,6 +221,7 @@ export function generateSeatingAllotment(
 
           return aScore - bScore;
         });
+      }
 
       if (sortedQueues.length > 0) {
         const chosenQueue = sortedQueues[0];
