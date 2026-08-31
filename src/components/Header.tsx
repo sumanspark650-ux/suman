@@ -54,12 +54,9 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-xl font-bold text-slate-900 tracking-tight">
                 ExamSeat
               </h1>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">
-                Sitting Allotment Engine
-              </span>
             </div>
             <p className="text-xs text-slate-500 hidden sm:block">
-              Anti-cheating interleaved multi-branch seating allocator with room layout visualizers
+              Examination Seating Arrangement & Hall Management
             </p>
           </div>
         </div>
