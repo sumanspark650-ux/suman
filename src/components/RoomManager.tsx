@@ -406,22 +406,24 @@ export const RoomManager: React.FC<RoomManagerProps> = ({
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Rows (Depth)</label>
                   <input
+                    id="input-room-rows"
                     type="number"
-                    min={1}
+                    min={0}
                     max={12}
                     value={rows}
-                    onChange={e => setRows(Math.max(1, Math.min(12, Number(e.target.value))))}
+                    onChange={e => setRows(Math.max(0, Math.min(12, Number(e.target.value))))}
                     className="w-full px-3 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Columns (Width)</label>
                   <input
+                    id="input-room-cols"
                     type="number"
-                    min={1}
+                    min={0}
                     max={12}
                     value={cols}
-                    onChange={e => setCols(Math.max(1, Math.min(12, Number(e.target.value))))}
+                    onChange={e => setCols(Math.max(0, Math.min(12, Number(e.target.value))))}
                     className="w-full px-3 py-1.5 text-xs sm:text-sm border border-slate-200 rounded-lg bg-white focus:outline-none"
                   />
                 </div>
@@ -457,7 +459,7 @@ export const RoomManager: React.FC<RoomManagerProps> = ({
 
                   <div
                     className="grid gap-2 overflow-x-auto p-1"
-                    style={{ gridTemplateColumns: `repeat(${cols}, minmax(48px, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(48px, 1fr))` }}
                   >
                     {Array.from({ length: rows }).map((_, r) =>
                       Array.from({ length: cols }).map((_, c) => (
