@@ -87,8 +87,7 @@ export function generateSampleStudents(): Student[] {
         subjectName: subj.name,
         semester: 6,
         year: 3,
-        email: `${fName.toLowerCase()}.${lName.toLowerCase()}@university.edu`,
-        gender: (i % 2 === 0) ? 'Female' : 'Male'
+        email: `${fName.toLowerCase()}.${lName.toLowerCase()}@university.edu`
       });
 
       idCounter++;

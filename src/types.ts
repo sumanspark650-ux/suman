@@ -8,7 +8,6 @@ export interface Student {
   semester?: string | number;
   year?: string | number;
   email?: string;
-  gender?: 'Male' | 'Female' | 'Other';
 }
 
 export interface BlockedSeat {
