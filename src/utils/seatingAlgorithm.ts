@@ -44,7 +44,7 @@ export function generateSeatingAllotment(
   // Group students by department or subject
   const studentsByDept: Record<string, Student[]> = {};
   students.forEach(student => {
-    const dept = student.department || 'General';
+    const dept = student.department || 'Unassigned';
     if (!studentsByDept[dept]) {
       studentsByDept[dept] = [];
     }

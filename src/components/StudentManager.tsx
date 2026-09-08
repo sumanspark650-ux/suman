@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { Upload, Plus, Trash2, Search, Filter, FileSpreadsheet, Sparkles, CheckCircle2, AlertCircle, Users, Download } from 'lucide-react';
@@ -23,6 +23,24 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Automatically remove any students with "General" department from the database
+  useEffect(() => {
+    setStudents(prev => {
+      const hasGeneral = prev.some(s => s.department && s.department.trim().toLowerCase() === 'general');
+      if (hasGeneral) {
+        return prev.filter(s => !s.department || s.department.trim().toLowerCase() !== 'general');
+      }
+      return prev;
+    });
+  }, [setStudents]);
+
+  // Reset selectedDeptFilter if set to General
+  useEffect(() => {
+    if (selectedDeptFilter.trim().toLowerCase() === 'general') {
+      setSelectedDeptFilter('ALL');
+    }
+  }, [selectedDeptFilter]);
+
   // New Student Form State
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
     rollNo: '',
@@ -33,15 +51,22 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     semester: 6
   });
 
-  // Calculate unique departments and counts
+  // Calculate unique departments and counts (excluding General)
   const departmentCounts: Record<string, number> = {};
   students.forEach(s => {
-    departmentCounts[s.department] = (departmentCounts[s.department] || 0) + 1;
+    if (s.department && s.department.trim().toLowerCase() !== 'general') {
+      departmentCounts[s.department] = (departmentCounts[s.department] || 0) + 1;
+    }
   });
-  const departments = Object.keys(departmentCounts).sort();
+  const departments = Object.keys(departmentCounts)
+    .filter(d => d.trim().toLowerCase() !== 'general')
+    .sort();
 
-  // Filtered student list
+  // Filtered student list (excluding General)
   const filteredStudents = students.filter(s => {
+    if (s.department && s.department.trim().toLowerCase() === 'general') {
+      return false;
+    }
     const matchesSearch = 
       s.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,6 +130,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         /roll|reg|id|enrollment/i.test(k)
       ) || Object.keys(row)[0];
 
+      const rawRoll = rollKey && row[rollKey] ? String(row[rollKey]).trim() : '';
+      // Skip empty rows or blank entries
+      if (!rawRoll || rawRoll.toLowerCase() === 'undefined' || rawRoll.toLowerCase() === 'null') {
+        return;
+      }
+
       const nameKey = Object.keys(row).find(k => 
         /name|student/i.test(k)
       );
@@ -117,23 +148,26 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
         /subj|paper|code/i.test(k)
       );
 
-      const rollVal = String(row[rollKey] || `ST-${index + 1}`).trim();
+      const rollVal = rawRoll;
       const nameVal = nameKey && row[nameKey] ? String(row[nameKey]).trim() : `Student ${index + 1}`;
-      const deptVal = deptKey && row[deptKey] ? String(row[deptKey]).trim() : 'General';
+      const rawDept = deptKey && row[deptKey] ? String(row[deptKey]).trim() : '';
+      // Skip or prevent assigning 'General'
+      if (rawDept.toLowerCase() === 'general') {
+        return;
+      }
+      const deptVal = rawDept || 'Computer Science';
       const subjVal = subjKey && row[subjKey] ? String(row[subjKey]).trim() : `${deptVal.substring(0, 2).toUpperCase()}101`;
 
-      if (rollVal) {
-        imported.push({
-          id: `imp_${Date.now()}_${index}`,
-          rollNo: rollVal,
-          name: nameVal,
-          department: deptVal,
-          subjectCode: subjVal,
-          subjectName: row['Subject Name'] || row['subject_name'] || '',
-          semester: row['Semester'] || row['semester'] || 1,
-          year: row['Year'] || row['year'] || 1
-        });
-      }
+      imported.push({
+        id: `imp_${Date.now()}_${index}`,
+        rollNo: rollVal,
+        name: nameVal,
+        department: deptVal,
+        subjectCode: subjVal,
+        subjectName: row['Subject Name'] || row['subject_name'] || '',
+        semester: row['Semester'] || row['semester'] || 1,
+        year: row['Year'] || row['year'] || 1
+      });
     });
 
     if (imported.length > 0) {
