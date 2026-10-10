@@ -104,7 +104,580 @@ export function generateSeatingAllotment(
     const seatSequence: SeatPos[] = [];
 
     let currentBench = 1;
-    if (settings.strategy === 'snake_zigzag') {
+    if (settings.strategy === 'same_dept_rows') {
+      // Row-by-row traversal: each classroom row is dedicated to a single Department / Branch
+      let deptCycleIdx = 0;
+      let prevRowDept: string | null = null;
+
+      for (let r = 0; r < room.rows; r++) {
+        const availableQueues = queues.filter(q => q.students.length > 0);
+        if (availableQueues.length === 0) break;
+
+        // Pick a department for this row, cycling through available departments and avoiding prevRowDept if possible
+        let chosenQueue = availableQueues[deptCycleIdx % availableQueues.length];
+        if (availableQueues.length > 1 && chosenQueue.department === prevRowDept) {
+          deptCycleIdx++;
+          chosenQueue = availableQueues[deptCycleIdx % availableQueues.length];
+        }
+        deptCycleIdx++;
+
+        for (let c = 0; c < room.cols; c++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            // If current row's department queue is exhausted mid-row, switch to next available department
+            if (chosenQueue.students.length === 0) {
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              chosenQueue = remaining.find(q => q.department !== prevRowDept) || remaining[0];
+            }
+
+            const student = chosenQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+
+        prevRowDept = chosenQueue.department;
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'same_dept_cols') {
+      // Column-by-column traversal: each classroom column is dedicated to a single Department / Branch
+      let deptCycleIdx = 0;
+      let prevColDept: string | null = null;
+
+      for (let c = 0; c < room.cols; c++) {
+        const availableQueues = queues.filter(q => q.students.length > 0);
+        if (availableQueues.length === 0) break;
+
+        // Pick a department for this column, cycling through available departments and avoiding prevColDept if possible
+        let chosenQueue = availableQueues[deptCycleIdx % availableQueues.length];
+        if (availableQueues.length > 1 && chosenQueue.department === prevColDept) {
+          deptCycleIdx++;
+          chosenQueue = availableQueues[deptCycleIdx % availableQueues.length];
+        }
+        deptCycleIdx++;
+
+        for (let r = 0; r < room.rows; r++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            // If current column's department queue is exhausted mid-column, switch to next available department
+            if (chosenQueue.students.length === 0) {
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              chosenQueue = remaining.find(q => q.department !== prevColDept) || remaining[0];
+            }
+
+            const student = chosenQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+
+        prevColDept = chosenQueue.department;
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'same_dept_rows_split_sides') {
+      // Split classroom into Left Side and Right Side:
+      // One Department / Branch is seated in same rows on one side, and another Department / Branch on the other side
+      const availableStart = queues.filter(q => q.students.length > 0);
+      let leftQueue = availableStart[0] || null;
+      let rightQueue = (availableStart.length > 1 ? availableStart[1] : availableStart[0]) || null;
+
+      const midCol = Math.max(1, Math.ceil(room.cols / 2));
+
+      for (let r = 0; r < room.rows; r++) {
+        // Left Side of the classroom (columns 0 to midCol - 1)
+        for (let c = 0; c < midCol; c++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            if (!leftQueue || leftQueue.students.length === 0) {
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              leftQueue = remaining.find(q => rightQueue && q.department !== rightQueue.department) || remaining[0];
+            }
+
+            const student = leftQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+
+        // Right Side of the classroom (columns midCol to room.cols - 1)
+        for (let c = midCol; c < room.cols; c++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            if (!rightQueue || rightQueue.students.length === 0) {
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              rightQueue = remaining.find(q => leftQueue && q.department !== leftQueue.department) || remaining[0];
+            }
+
+            const student = rightQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'desk_side_by_side_dept') {
+      // Column-by-column desk traversal (one by one down each column):
+      // One side of the desk (Seat A) has one Department / Branch
+      // and the other side of the desk (Seat B) has another Department / Branch
+      const sideQueues: Array<{ department: string; students: Student[] } | null> = [];
+      for (let s = 0; s < room.seatsPerDesk; s++) {
+        const available = queues.filter(q => q.students.length > 0 && !sideQueues.includes(q));
+        sideQueues[s] = available[0] || queues.find(q => q.students.length > 0) || null;
+      }
+
+      for (let c = 0; c < room.cols; c++) {
+        for (let r = 0; r < room.rows; r++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            let activeQueue = sideQueues[s];
+            if (!activeQueue || activeQueue.students.length === 0) {
+              const otherActiveDepts = new Set(
+                sideQueues
+                  .filter((q, idx) => idx !== s && q && q.students.length > 0)
+                  .map(q => q!.department)
+              );
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              activeQueue = remaining.find(q => !otherActiveDepts.has(q.department)) || remaining[0];
+              sideQueues[s] = activeQueue;
+            }
+
+            const student = activeQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'zigzag_two_dept_desk_col') {
+      // Zigzag two departments in one desk, one by one down each column:
+      // Alternates which side of the desk (Seat A vs Seat B) each of the two active departments occupies
+      // from row to row down each column and across columns.
+      const sideQueues: Array<{ department: string; students: Student[] } | null> = [];
+      for (let s = 0; s < room.seatsPerDesk; s++) {
+        const available = queues.filter(q => q.students.length > 0 && !sideQueues.includes(q));
+        sideQueues[s] = available[0] || queues.find(q => q.students.length > 0) || null;
+      }
+
+      for (let c = 0; c < room.cols; c++) {
+        for (let r = 0; r < room.rows; r++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            // Zigzag the two department slots across Seat A and Seat B on alternating rows/columns
+            const queueSlot = (r + c) % 2 === 0 ? s : (room.seatsPerDesk - 1 - s);
+
+            let activeQueue = sideQueues[queueSlot];
+            if (!activeQueue || activeQueue.students.length === 0) {
+              const otherActiveDepts = new Set(
+                sideQueues
+                  .filter((q, idx) => idx !== queueSlot && q && q.students.length > 0)
+                  .map(q => q!.department)
+              );
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              activeQueue = remaining.find(q => !otherActiveDepts.has(q.department)) || remaining[0];
+              sideQueues[queueSlot] = activeQueue;
+            }
+
+            const student = activeQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'same_dept_one_by_one_col') {
+      // One department student on one side of the desk (Seat A) and another department student on the other side (Seat B),
+      // seated one by one down each column (Col 1 to Col N, Row 1 to Row N).
+      const sideQueues: Array<{ department: string; students: Student[] } | null> = [];
+      for (let s = 0; s < room.seatsPerDesk; s++) {
+        const available = queues.filter(q => q.students.length > 0 && !sideQueues.includes(q));
+        sideQueues[s] = available[0] || queues.find(q => q.students.length > 0) || null;
+      }
+
+      for (let c = 0; c < room.cols; c++) {
+        for (let r = 0; r < room.rows; r++) {
+          const benchNum = r * room.cols + c + 1;
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            let activeQueue = sideQueues[s];
+            if (!activeQueue || activeQueue.students.length === 0) {
+              const otherActiveDepts = new Set(
+                sideQueues
+                  .filter((q, idx) => idx !== s && q && q.students.length > 0)
+                  .map(q => q!.department)
+              );
+              const remaining = queues.filter(q => q.students.length > 0);
+              if (remaining.length === 0) break;
+              activeQueue = remaining.find(q => !otherActiveDepts.has(q.department)) || remaining[0];
+              sideQueues[s] = activeQueue;
+            }
+
+            const student = activeQueue.students.shift()!;
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+      }
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'cross_subject_bench') {
+      // Cross-Subject Desk Pairing: group remaining students by subjectCode and pair distinct exam papers on each desk
+      const allRemainingStudents: Student[] = [];
+      queues.forEach(q => {
+        while (q.students.length > 0) {
+          allRemainingStudents.push(q.students.shift()!);
+        }
+      });
+
+      const subjectMap = new Map<string, Student[]>();
+      allRemainingStudents.forEach(st => {
+        const sub = st.subjectCode || 'GEN';
+        if (!subjectMap.has(sub)) subjectMap.set(sub, []);
+        subjectMap.get(sub)!.push(st);
+      });
+
+      const subjectQueues = Array.from(subjectMap.entries()).map(([subjectCode, list]) => ({
+        subjectCode,
+        students: list
+      }));
+
+      for (let r = 0; r < room.rows; r++) {
+        for (let c = 0; c < room.cols; c++) {
+          const benchNum = r * room.cols + c + 1;
+          const deskChosenSubjects = new Set<string>();
+          const deskChosenDepts = new Set<string>();
+
+          for (let s = 0; s < room.seatsPerDesk; s++) {
+            if (isBlocked(room, r, c, s)) continue;
+
+            const availableSubQueues = subjectQueues.filter(sq => sq.students.length > 0);
+            if (availableSubQueues.length === 0) break;
+
+            // Check immediate neighbors (above & left) to also avoid adjacent same subject/dept
+            const neighborSubs = new Set<string>(deskChosenSubjects);
+            const neighborDepts = new Set<string>(deskChosenDepts);
+
+            if (c > 0) {
+              const leftNeighbor = seatGridMap.get(`${room.id}_${r}_${c - 1}_${s}`);
+              if (leftNeighbor) {
+                neighborSubs.add(leftNeighbor.subjectCode);
+                neighborDepts.add(leftNeighbor.department);
+              }
+            }
+            if (r > 0) {
+              const topNeighbor = seatGridMap.get(`${room.id}_${r - 1}_${c}_${s}`);
+              if (topNeighbor) {
+                neighborSubs.add(topNeighbor.subjectCode);
+                neighborDepts.add(topNeighbor.department);
+              }
+            }
+
+            availableSubQueues.sort((a, b) => {
+              const aDeskSubClash = deskChosenSubjects.has(a.subjectCode) ? 2000 : 0;
+              const bDeskSubClash = deskChosenSubjects.has(b.subjectCode) ? 2000 : 0;
+
+              const aDept = a.students[0]?.department || '';
+              const bDept = b.students[0]?.department || '';
+              const aDeskDeptClash = deskChosenDepts.has(aDept) ? 1000 : 0;
+              const bDeskDeptClash = deskChosenDepts.has(bDept) ? 1000 : 0;
+
+              const aAdjSubClash = neighborSubs.has(a.subjectCode) ? 400 : 0;
+              const bAdjSubClash = neighborSubs.has(b.subjectCode) ? 400 : 0;
+
+              const aAdjDeptClash = neighborDepts.has(aDept) ? 200 : 0;
+              const bAdjDeptClash = neighborDepts.has(bDept) ? 200 : 0;
+
+              const aScore = aDeskSubClash + aDeskDeptClash + aAdjSubClash + aAdjDeptClash - a.students.length;
+              const bScore = bDeskSubClash + bDeskDeptClash + bAdjSubClash + bAdjDeptClash - b.students.length;
+              return aScore - bScore;
+            });
+
+            const chosenSubQueue = availableSubQueues[0];
+            const student = chosenSubQueue.students.shift()!;
+            deskChosenSubjects.add(student.subjectCode);
+            deskChosenDepts.add(student.department);
+
+            seatGridMap.set(`${room.id}_${r}_${c}_${s}`, student);
+
+            const seatLetter = String.fromCharCode(65 + s);
+            const seatLabel = `R${r + 1}C${c + 1}-${seatLetter}`;
+            const deskCode = `Desk ${benchNum}`;
+
+            allocations.push({
+              id: `alloc_${room.id}_${r}_${c}_${s}`,
+              studentId: student.id,
+              student,
+              roomId: room.id,
+              roomName: room.name,
+              row: r,
+              col: c,
+              seatIndex: s,
+              benchNumber: benchNum,
+              seatLabel,
+              deskCode
+            });
+
+            allocatedInRoom++;
+            roomDeptCount[student.department] = (roomDeptCount[student.department] || 0) + 1;
+            roomSubjectCount[student.subjectCode] = (roomSubjectCount[student.subjectCode] || 0) + 1;
+          }
+        }
+      }
+
+      // Put any unallocated students back into department queues for subsequent rooms
+      subjectQueues.forEach(sq => {
+        sq.students.forEach(st => {
+          const targetDeptQueue = queues.find(q => q.department === st.department);
+          if (targetDeptQueue) {
+            targetDeptQueue.students.push(st);
+          } else if (queues.length > 0) {
+            queues[0].students.push(st);
+          }
+        });
+      });
+
+      roomSummaries.push({
+        roomId: room.id,
+        roomName: room.name,
+        totalSeats,
+        usableSeats,
+        allocatedCount: allocatedInRoom,
+        departmentCounts: roomDeptCount,
+        subjectCounts: roomSubjectCount,
+        occupancyPercentage: usableSeats > 0 ? Math.round((allocatedInRoom / usableSeats) * 100) : 0
+      });
+      continue;
+    } else if (settings.strategy === 'snake_zigzag') {
       for (let r = 0; r < room.rows; r++) {
         // Even rows left-to-right, odd rows right-to-left
         const colIndices = r % 2 === 0 
@@ -114,14 +687,14 @@ export function generateSeatingAllotment(
         for (const c of colIndices) {
           for (let s = 0; s < room.seatsPerDesk; s++) {
             if (!isBlocked(room, r, c, s)) {
-              seatSequence.push({ row: r, col: c, seatIndex: s, benchNumber: currentBench });
+              seatSequence.push({ row: r, col: c, seatIndex: s, benchNumber: (r * room.cols + c + 1) });
             }
           }
           currentBench++;
         }
       }
     } else {
-      // Column-first or Row-first standard order (Default: Column interleaving for exam fairness)
+      // Checkerboard Interleaving (Default: Column-first interleaving for exam fairness)
       for (let c = 0; c < room.cols; c++) {
         for (let r = 0; r < room.rows; r++) {
           for (let s = 0; s < room.seatsPerDesk; s++) {
@@ -134,6 +707,7 @@ export function generateSeatingAllotment(
     }
 
     // Now assign students to each available seat position in the sequence
+    let stepIndex = 0;
     for (const pos of seatSequence) {
       // Check if all queues are empty
       const hasAnyStudent = queues.some(q => q.students.length > 0);
@@ -144,12 +718,16 @@ export function generateSeatingAllotment(
       // 1. If pos.seatIndex > 0 (same desk partner at pos.seatIndex - 1), try to avoid same dept / subject
       // 2. Neighbor in row - 1, row + 1, col - 1, col + 1
       const neighborStudents: Student[] = [];
+      const sameDeskStudents: Student[] = [];
 
       // Same desk partner (left or right)
       for (let s = 0; s < room.seatsPerDesk; s++) {
         if (s !== pos.seatIndex) {
           const n = seatGridMap.get(`${room.id}_${pos.row}_${pos.col}_${s}`);
-          if (n) neighborStudents.push(n);
+          if (n) {
+            neighborStudents.push(n);
+            sameDeskStudents.push(n);
+          }
         }
       }
 
@@ -174,26 +752,43 @@ export function generateSeatingAllotment(
       }
 
       const neighborDepts = new Set(neighborStudents.map(n => n.department));
+      const sameDeskDepts = new Set(sameDeskStudents.map(n => n.department));
       const neighborSubjects = new Set(neighborStudents.map(n => n.subjectCode));
 
       // Sort queues to prioritize queues with most remaining students,
-      // but penalize queues matching adjacent neighbor departments/subjects
-      const sortedQueues = [...queues]
-        .filter(q => q.students.length > 0)
-        .sort((a, b) => {
-          const aDeptClash = neighborDepts.has(a.department) ? 1000 : 0;
-          const bDeptClash = neighborDepts.has(b.department) ? 1000 : 0;
+      // while enforcing checkerboard / snake rotation and penalizing neighbor clashes
+      const numQueues = Math.max(1, queues.length);
+      const preferredQueueIdx =
+        settings.strategy === 'snake_zigzag'
+          ? stepIndex % numQueues
+          : (pos.row * room.seatsPerDesk + pos.col + pos.seatIndex) % numQueues;
 
-          const aNextSubject = a.students[0]?.subjectCode;
-          const bNextSubject = b.students[0]?.subjectCode;
+      const sortedQueues = queues
+        .map((q, idx) => ({ q, idx }))
+        .filter(item => item.q.students.length > 0)
+        .sort((a, b) => {
+          const aSameDeskClash = sameDeskDepts.has(a.q.department) ? 1500 : 0;
+          const bSameDeskClash = sameDeskDepts.has(b.q.department) ? 1500 : 0;
+
+          const aDeptClash = neighborDepts.has(a.q.department) ? 1000 : 0;
+          const bDeptClash = neighborDepts.has(b.q.department) ? 1000 : 0;
+
+          const aNextSubject = a.q.students[0]?.subjectCode;
+          const bNextSubject = b.q.students[0]?.subjectCode;
           const aSubClash = (aNextSubject && neighborSubjects.has(aNextSubject)) ? 500 : 0;
           const bSubClash = (bNextSubject && neighborSubjects.has(bNextSubject)) ? 500 : 0;
 
-          const aScore = aDeptClash + aSubClash - a.students.length;
-          const bScore = bDeptClash + bSubClash - b.students.length;
+          const aRotationBonus = a.idx === preferredQueueIdx ? -50 : 0;
+          const bRotationBonus = b.idx === preferredQueueIdx ? -50 : 0;
+
+          const aScore = aSameDeskClash + aDeptClash + aSubClash + aRotationBonus - a.q.students.length;
+          const bScore = bSameDeskClash + bDeptClash + bSubClash + bRotationBonus - b.q.students.length;
 
           return aScore - bScore;
-        });
+        })
+        .map(item => item.q);
+
+      stepIndex++;
 
       if (sortedQueues.length > 0) {
         const chosenQueue = sortedQueues[0];

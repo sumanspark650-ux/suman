@@ -1,11 +1,11 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, Shuffle, Sliders, RefreshCw, Cpu, Layers, GitFork } from 'lucide-react';
+import { Sparkles, ShieldCheck, Shuffle, RefreshCw, Cpu, GitFork, Users, Repeat, ArrowDownNarrowWide } from 'lucide-react';
 import { AllotmentSettings, AllotmentStrategy } from '../types';
 
 interface AllotmentControlsProps {
   settings: AllotmentSettings;
   setSettings: React.Dispatch<React.SetStateAction<AllotmentSettings>>;
-  onGenerate: () => void;
+  onGenerate: (customSettings?: AllotmentSettings) => void;
   isGenerating: boolean;
   canGenerate: boolean;
   totalStudents: number;
@@ -21,6 +21,51 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
   totalStudents,
   totalCapacity
 }) => {
+  const handleSelectDeskSideBySideDept = () => {
+    const updatedSettings: AllotmentSettings = {
+      ...settings,
+      strategy: 'desk_side_by_side_dept',
+      disallowSameDeptOnSameDesk: true,
+      disallowSameDeptAdjacentHorizontal: false,
+      disallowSameDeptAdjacentVertical: false,
+      disallowSameSubjectAdjacent: false
+    };
+    setSettings(updatedSettings);
+    if (canGenerate) {
+      onGenerate(updatedSettings);
+    }
+  };
+
+  const handleSelectZigzagTwoDeptDeskCol = () => {
+    const updatedSettings: AllotmentSettings = {
+      ...settings,
+      strategy: 'zigzag_two_dept_desk_col',
+      disallowSameDeptOnSameDesk: true,
+      disallowSameDeptAdjacentHorizontal: true,
+      disallowSameDeptAdjacentVertical: true,
+      disallowSameSubjectAdjacent: false
+    };
+    setSettings(updatedSettings);
+    if (canGenerate) {
+      onGenerate(updatedSettings);
+    }
+  };
+
+  const handleSelectSameDeptOneByOneCol = () => {
+    const updatedSettings: AllotmentSettings = {
+      ...settings,
+      strategy: 'same_dept_one_by_one_col',
+      disallowSameDeptOnSameDesk: true,
+      disallowSameDeptAdjacentHorizontal: false,
+      disallowSameDeptAdjacentVertical: false,
+      disallowSameSubjectAdjacent: false
+    };
+    setSettings(updatedSettings);
+    if (canGenerate) {
+      onGenerate(updatedSettings);
+    }
+  };
+
   const strategies: Array<{ id: AllotmentStrategy; title: string; desc: string; icon: any }> = [
     {
       id: 'interleaved_departments',
@@ -28,23 +73,35 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
       desc: 'Alternates candidates from distinct departments across rows & columns to eliminate peer cheating.',
       icon: ShieldCheck
     },
-     {
+    {
       id: 'snake_zigzag',
       title: 'Snake / Zigzag Traversal',
       desc: 'Traverses benches in alternating serpentine order while isolating branch neighbors.',
       icon: GitFork
     },
     {
-      id: 'cross_subject_bench',
-      title: 'Cross-Subject Desk Pairing',
-      desc: 'Guarantees that bench partners on 2-seater desks are from completely different exam papers.',
-      icon: Layers
-    },
-     {
       id: 'randomized_fair',
       title: 'Randomized Anti-Cheat Order',
       desc: 'Randomizes roll sequence while strictly keeping department spacing boundaries.',
       icon: Shuffle
+    },
+    {
+      id: 'desk_side_by_side_dept',
+      title: 'Desk One Side One Dept & Other Side Other Dept (Column)',
+      desc: 'Seats one Department / Branch on one side of each desk (Seat A) and another Department / Branch on the other side (Seat B) one by one down each column.',
+      icon: Users
+    },
+    {
+      id: 'zigzag_two_dept_desk_col',
+      title: 'Zigzag Two Dept in One Desk (Column)',
+      desc: 'Zigzags two Department / Branch students in each desk (alternating Seat A & Seat B) one by one down each column.',
+      icon: Repeat
+    },
+    {
+      id: 'same_dept_one_by_one_col',
+      title: 'One Dept One Side Desk & Other Dept Other Side (Column-Wise)',
+      desc: 'One Department student seats on one side of the desk (Seat A) and another Department student seats on the other side (Seat B) one by one column-wise.',
+      icon: ArrowDownNarrowWide
     }
   ];
 
@@ -61,34 +118,36 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onGenerate}
-          disabled={!canGenerate || isGenerating}
-          id="btn-generate-allotment-main"
-          className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all cursor-pointer ${
-            !canGenerate
-              ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-              : isGenerating
-              ? 'bg-blue-400 text-white cursor-wait'
-              : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white hover:shadow-lg'
-          }`}
-        >
-          {isGenerating ? (
-            <>
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Optimizing Seating Plan...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>⚡ Generate Fair Seating Plan</span>
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => onGenerate()}
+            disabled={!canGenerate || isGenerating}
+            id="btn-generate-allotment-main"
+            className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all cursor-pointer ${
+              !canGenerate
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                : isGenerating
+                ? 'bg-blue-400 text-white cursor-wait'
+                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white hover:shadow-lg'
+            }`}
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Optimizing Seating Plan...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>⚡ Generate Fair Seating Plan</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Strategy Grid Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {strategies.map(s => {
           const isSelected = settings.strategy === s.id;
           const Icon = s.icon;
@@ -97,7 +156,28 @@ export const AllotmentControls: React.FC<AllotmentControlsProps> = ({
               key={s.id}
               type="button"
               id={`strategy-card-${s.id}`}
-              onClick={() => setSettings(prev => ({ ...prev, strategy: s.id }))}
+              onClick={() => {
+                if (s.id === 'desk_side_by_side_dept') {
+                  handleSelectDeskSideBySideDept();
+                } else if (s.id === 'zigzag_two_dept_desk_col') {
+                  handleSelectZigzagTwoDeptDeskCol();
+                } else if (s.id === 'same_dept_one_by_one_col') {
+                  handleSelectSameDeptOneByOneCol();
+                } else {
+                  const updatedSettings: AllotmentSettings = {
+                    ...settings,
+                    strategy: s.id,
+                    disallowSameDeptAdjacentHorizontal: true,
+                    disallowSameDeptOnSameDesk: true,
+                    disallowSameSubjectAdjacent: true,
+                    disallowSameDeptAdjacentVertical: true
+                  };
+                  setSettings(updatedSettings);
+                  if (canGenerate) {
+                    onGenerate(updatedSettings);
+                  }
+                }
+              }}
               className={`p-3.5 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
                 isSelected
                   ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 shadow-xs'

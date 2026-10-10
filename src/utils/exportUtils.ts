@@ -181,3 +181,5 @@ export function generateInvigilatorSheetPDF(result: AllotmentResult) {
 
   doc.save(`Invigilator_Attendance_Rosters.pdf`);
 }
+
+

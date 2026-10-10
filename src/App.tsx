@@ -60,10 +60,11 @@ export default function App() {
   }, [rooms]);
 
   // Run seating algorithm
-  const handleGenerateAllotment = () => {
+  const handleGenerateAllotment = (customSettings?: AllotmentSettings) => {
+    const activeSettings = customSettings || settings;
     setIsGenerating(true);
     setTimeout(() => {
-      const result = generateSeatingAllotment(students, rooms, settings);
+      const result = generateSeatingAllotment(students, rooms, activeSettings);
       setAllotmentResult(result);
       setIsGenerating(false);
       setActiveTab('allotment');

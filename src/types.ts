@@ -35,6 +35,12 @@ export type AllotmentStrategy =
   | 'snake_zigzag'            // Snake path interleaving
   | 'cross_subject_bench'     // Prioritize distinct subjects on same desk
   | 'randomized_fair'         // Shuffle within branch but strictly isolate neighbors
+  | 'same_dept_rows'          // Place same Department / Branch across each classroom row
+  | 'same_dept_cols'          // Place same Department / Branch down each classroom column
+  | 'same_dept_rows_split_sides' // Place one Department in rows on one side and another Department in rows on the other side
+  | 'desk_side_by_side_dept'  // Desk one side one department and other side other department seat one by one
+  | 'zigzag_two_dept_desk_col' // Zigzag two departments in one desk one by one using column
+  | 'same_dept_one_by_one_col' // Same department student one by one using column
   | 'sequential_roll';        // Keep roll order within branch stream
 
 export interface AllotmentSettings {
